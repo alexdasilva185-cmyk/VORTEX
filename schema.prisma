@@ -1,0 +1,304 @@
+// Schema do Vórtex Pay — Postgres (Supabase, Neon, Railway ou qualquer outro).
+//
+// DATABASE_URL = conexão usada pelo app (no Supabase, a do pooler "Transaction", porta 6543).
+// DIRECT_URL   = conexão usada pra criar/alterar as tabelas (`npx prisma db push`;
+//                no Supabase, a do pooler "Session", porta 5432).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Usuários (admin) ────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // recuperação de senha — hash do token (nunca o token em si)
+  passwordResetTokenHash String?   @unique
+  passwordResetExpiresAt DateTime?
+}
+
+// ─── Produtos ────────────────────────────────────────────────────────────────
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String?
+  imageUrl    String?
+  priceCents  Int
+  active      Boolean @default(true)
+
+  // página de obrigado
+  thankYouTitle   String?
+  thankYouMessage String?
+  thankYouUrl     String? // se preenchido, redireciona
+  // link enviado no e-mail de "compra aprovada" (botão "Acessar …").
+  // Vazio = não manda e-mail de acesso.
+  accessUrl       String?
+
+  // customização do checkout
+  primaryColor     String? @default("#10b981")
+  // banner horizontal do topo
+  bannerImageUrl   String?
+  showTopBanner    Boolean @default(true)
+  // banners empilhados na coluna direita (JSON array de URLs)
+  sideBannersJson  String  @default("[]")
+  showSideBanners  Boolean @default(true)
+  // caixa verde de destaque entre o banner e o form
+  headline         String? // ex: "ACESSO IMEDIATO A TODO MÉTODO!"
+  subheadline      String? // ex: "ÚLTIMA SEMANA DE PROMOÇÃO"
+  showHighlightBox Boolean @default(true)
+  // texto legal do footer (sob o botão Pagar)
+  footerText       String?
+
+  // parcela que vem pré-selecionada no checkout (cartão). null = 1x
+  defaultInstallments Int? @default(1)
+
+  // contagem regressiva de urgência (por visitante, em minutos)
+  showCountdown    Boolean @default(false)
+  countdownMinutes Int? // duração total do cronômetro pra cada visitante
+  countdownLabel   String? @default("Oferta por tempo limitado")
+
+  // produto com vendas não pode ser apagado (o histórico aponta pra ele):
+  // "excluir" arquiva — some do admin e do checkout, as vendas ficam
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderBumps  OrderBump[]  @relation("ProductBumps")
+  bumpFor     OrderBump[]  @relation("BumpProduct")
+  coproducers Coproducer[]
+  offers      Offer[]
+  orders      Order[]
+}
+
+// ─── Ofertas (variações de preço do mesmo produto) ───────────────────────────
+//
+// Cada oferta reaproveita TODO o resto do produto (checkout, bumps,
+// coprodutores, webhooks) — só o preço muda. Tem um link próprio
+// (/c/<slug-produto>/<slug-oferta>) que leva ao checkout daquele preço.
+// O preço é enviado à Pagar.me em tempo de compra (orders API v5, ad-hoc).
+
+model Offer {
+  id         String  @id @default(cuid())
+  productId  String
+  name       String
+  // slug único por produto, usado no link público
+  slug       String
+  priceCents Int
+  active     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orders  Order[]
+
+  @@unique([productId, slug])
+  @@index([productId])
+}
+
+// ─── Order Bumps (até 3 por produto) ─────────────────────────────────────────
+
+model OrderBump {
+  id            String  @id @default(cuid())
+  productId     String // produto principal
+  bumpProductId String // produto ofertado como bump
+  position      Int // 1, 2 ou 3
+  // texto do header chamativo (ex.: "SIM, EU ACEITO ESSA OFERTA ESPECIAL!")
+  ctaText       String? @default("SIM, EU ACEITO ESSA OFERTA ESPECIAL!")
+  title         String? // título do bump em destaque (vermelho sublinhado)
+  description   String?
+  // imagem específica do bump (se null usa bumpProduct.imageUrl)
+  imageUrl      String?
+  // preço promocional do bump (se null usa bumpProduct.priceCents)
+  priceCents    Int?
+
+  product     Product @relation("ProductBumps", fields: [productId], references: [id], onDelete: Cascade)
+  bumpProduct Product @relation("BumpProduct", fields: [bumpProductId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, position])
+}
+
+// ─── Coprodutores (split na Pagar.me) ────────────────────────────────────────
+
+model Coproducer {
+  id                 String @id @default(cuid())
+  productId          String
+  name               String // identificação humana
+  pagarmeRecipientId String // ID do recebedor cadastrado na Pagar.me
+  // Porcentagem em basis points (0-10000 = 0-100%) pra precisão.
+  // Ex: 1500 = 15%
+  percentage         Int
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ─── Vendas / Pedidos ────────────────────────────────────────────────────────
+
+model Order {
+  id        String  @id @default(cuid())
+  productId String
+  // oferta usada na compra (null = preço base do produto)
+  offerId   String?
+
+  // cliente
+  customerName     String
+  customerEmail    String
+  customerPhone    String
+  customerDocument String // CPF
+
+  // endereço (necessário pra cartão)
+  billingZipCode      String?
+  billingStreet       String?
+  billingNumber       String?
+  billingComplement   String?
+  billingNeighborhood String?
+  billingCity         String?
+  billingState        String?
+
+  // pagamento
+  paymentMethod   String // "pix" | "credit_card"
+  status          String @default("pending") // pending | paid | refused | cancelled | refunded
+  totalCents      Int
+  bumpsTotalCents Int    @default(0)
+  // compra em 2 cartões = 2; Cartão + Pix = 1 cartão + pixAmountCents
+  cardCount       Int    @default(1)
+  // parte paga no Pix na opção "Cartão + Pix" (paymentMethod = credit_card)
+  pixAmountCents  Int?
+
+  // bumps escolhidos (JSON: [{productId, name, priceCents}])
+  bumpsJson String?
+
+  // pagar.me
+  pagarmeOrderId    String?   @unique
+  // "Cartão + Pix": a Pagar.me não aceita Pix junto de outro pagamento no
+  // mesmo pedido, então o Pix vira um 2º pedido ligado a esta venda
+  pagarmePixOrderId String?
+  pagarmeChargeId   String?
+  pixQrCode         String?
+  pixQrCodeUrl      String?
+  pixExpiresAt      DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  paidAt    DateTime?
+
+  product Product @relation(fields: [productId], references: [id])
+  offer   Offer?  @relation(fields: [offerId], references: [id])
+
+  @@index([status])
+  @@index([customerEmail])
+  @@index([pagarmePixOrderId])
+  @@index([offerId])
+}
+
+// ─── Webhooks de saída (disparados pra URLs externas) ────────────────────────
+//
+// Eventos com os nomes comuns no mercado de infoprodutos (compra_aprovada,
+// pix_gerado…), com a opção de escolher vários produtos no mesmo webhook.
+
+model OutgoingWebhook {
+  id         String  @id @default(cuid())
+  name       String
+  url        String
+  // token enviado em todo payload (campo `access_token`)
+  token      String?
+  // secret opcional pra assinar via HMAC-SHA256 (header X-Webhook-Signature)
+  secret     String?
+  // JSON array de ids de evento:
+  // ["compra_aprovada","compra_recusada","compra_reembolsada",
+  //  "pix_gerado","boleto_gerado","carrinho_abandonado","chargeback"]
+  events     String
+  active     Boolean @default(true)
+  // JSON array de product IDs. Lista vazia [] = todos os produtos.
+  productIds String  @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliveries WebhookDelivery[]
+}
+
+model WebhookDelivery {
+  id             String    @id @default(cuid())
+  webhookId      String
+  // venda que gerou o evento (null em teste e nas entregas antigas, de
+  // antes da fila — nelas o id da venda só aparece dentro do payload)
+  orderId        String?
+  event          String
+  // corpo exato enviado (JSON) — reenvio manda os mesmos bytes, a assinatura
+  // é recalculada sobre ele
+  payload        String
+  // pending: na fila (nextAttemptAt = quando tentar) | success | failed
+  // (desistiu após o limite de tentativas)
+  status         String    @default("pending")
+  nextAttemptAt  DateTime?
+  lastAttemptAt  DateTime?
+  // resultado da última tentativa (o histórico completo fica em attemptLog)
+  responseStatus Int?
+  responseBody   String?
+  attempts       Int       @default(0)
+  success        Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  webhook    OutgoingWebhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  attemptLog WebhookAttempt[]
+
+  @@index([webhookId])
+  @@index([orderId])
+  @@index([status, nextAttemptAt])
+}
+
+// Uma linha por tentativa de entrega (status HTTP ou erro de rede).
+model WebhookAttempt {
+  id             String   @id @default(cuid())
+  deliveryId     String
+  number         Int
+  responseStatus Int?
+  // trecho da resposta ou mensagem do erro (timeout, DNS…)
+  responseBody   String?
+  durationMs     Int
+  createdAt      DateTime @default(now())
+
+  delivery WebhookDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryId])
+}
+
+// ─── Idempotência de eventos recebidos da Pagar.me ───────────────────────────
+//
+// A Pagar.me pode reentregar o mesmo evento (retry após 500, ou entregas
+// duplicadas na assinatura). Guardamos o id do evento pra ignorar re-execução.
+model ProcessedWebhookEvent {
+  eventId    String   @id
+  eventType  String
+  receivedAt DateTime @default(now())
+}
+
+// ─── Notificações push (app do admin no celular) ─────────────────────────────
+
+// Um registro por aparelho que ativou as notificações de venda.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+}

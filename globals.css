@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    height: 100%;
+  }
+  body {
+    @apply bg-ink-50 text-ink-900 antialiased;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-ink-800 border border-ink-200 hover:bg-ink-50;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  .input {
+    @apply w-full rounded-lg border border-ink-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+  }
+  .label {
+    @apply block text-sm font-medium text-ink-700 mb-1;
+  }
+  .card {
+    @apply bg-white rounded-xl shadow-card border border-ink-100;
+  }
+  /* Input do checkout: borda fininha, placeholder dentro, sem label */
+  .checkout-input {
+    @apply w-full bg-white border border-ink-200 rounded-md px-3.5 py-3 text-sm text-ink-900 placeholder:text-ink-500 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors;
+  }
+  .checkout-input[disabled] {
+    @apply bg-ink-50 cursor-not-allowed;
+  }
+}
+
+/* ─── Checkout ──────────────────────────────────────────────────────────────
+   Campo com rótulo flutuante: o rótulo fica dentro do campo e sobe quando
+   o campo tem foco ou valor. `.cf-field[data-filled="true"]` é setado pelo
+   componente (também funciona com <select>). */
+.cf-field {
+  position: relative;
+}
+.cf-control {
+  display: block;
+  width: 100%;
+  height: 48px;
+  background: #fff;
+  border: 1px solid #cfcfcf;
+  border-radius: 4px;
+  padding: 16px 14px 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.cf-control:focus {
+  border-color: #4299e1;
+}
+select.cf-control {
+  padding: 16px 36px 0 12px;
+  cursor: pointer;
+}
+.cf-label {
+  position: absolute;
+  left: 15px;
+  top: 17px;
+  font-size: 15px;
+  line-height: 15px;
+  font-weight: 500;
+  color: #6c7378;
+  pointer-events: none;
+  transition: top 0.15s, font-size 0.15s;
+  white-space: nowrap;
+}
+.cf-field:focus-within .cf-label,
+.cf-field[data-filled="true"] .cf-label {
+  top: 7px;
+  font-size: 11px;
+  line-height: 11px;
+}
+@media (max-width: 639px) {
+  select.cf-control {
+    padding: 16px 24px 0 12px;
+  }
+}
