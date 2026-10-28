@@ -1,0 +1,80 @@
+# Segurança: negar dotfiles e arquivos sensíveis (hospedagem compartilhada — document root na raiz do projeto).
+# Permite .well-known (Let's Encrypt / ACME).
+<IfModule mod_authz_core.c>
+    <FilesMatch "^\.(?!(well-known))">
+        Require all denied
+    </FilesMatch>
+    <FilesMatch "^(composer\.(json|lock)|artisan|phpunit\.xml(\.dist)?|\.env(\..+)?|\.gitignore|\.editorconfig)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "^\.(?!(well-known))">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+    <FilesMatch "^(composer\.(json|lock)|artisan|phpunit\.xml(\.dist)?|\.env(\..+)?|\.gitignore|\.editorconfig)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Bloquear .env, código-fonte e pastas internas (antes de servir arquivos existentes)
+    RewriteRule ^\.env(\..*)?$ - [F,L,NC]
+    RewriteRule ^\.git - [F,L,NC]
+    RewriteRule ^vendor(/|$) - [F,L,NC]
+    RewriteRule ^bootstrap(/|$) - [F,L,NC]
+    RewriteRule ^config(/|$) - [F,L,NC]
+    RewriteRule ^database(/|$) - [F,L,NC]
+    RewriteRule ^app(/|$) - [F,L,NC]
+    RewriteRule ^routes(/|$) - [F,L,NC]
+    RewriteRule ^resources(/|$) - [F,L,NC]
+    RewriteRule ^tests(/|$) - [F,L,NC]
+    RewriteRule ^node_modules(/|$) - [F,L,NC]
+    # Assets públicos de plugins (PluginAssetController). Bloqueia o restante de /plugins (código-fonte).
+    RewriteRule ^plugins/([a-z0-9\-_]+)/assets/(.*)$ public/index.php [L,QSA]
+    RewriteRule ^plugins(/|$) - [F,L,NC]
+    RewriteRule ^\.docker(/|$) - [F,L,NC]
+    RewriteRule ^(composer\.(json|lock)|artisan|phpunit\.xml(\.dist)?)$ - [F,L,NC]
+
+    # Raiz (/) – redireciona diretamente para /login (evita 404)
+    RewriteRule ^/?$ /login [R=302,L]
+
+    # Apple Pay: association via Laravel (Content-Type text/plain)
+    RewriteRule ^\.well-known/apple-developer-merchantid-domain-association$ public/index.php [L]
+
+    # Apple Pay / ACME: demais arquivos em public/.well-known
+    RewriteRule ^\.well-known/(.*)$ public/.well-known/$1 [L]
+
+    # /storage/* – arquivo local via symlink, se existir
+    RewriteCond %{DOCUMENT_ROOT}/public/storage/$1 -f
+    RewriteRule ^storage/(.*)$ public/storage/$1 [L]
+
+    # /storage/* – fallback Laravel (StorageServeController)
+    RewriteRule ^storage/ public/index.php [L]
+
+    # /build/* – servir de public/build/ (assets Vite)
+    RewriteRule ^build/(.*)$ public/build/$1 [L]
+
+    # /images/* – servir de public/images/
+    RewriteRule ^images/(.*)$ public/images/$1 [L]
+
+    # PWA: manifest dinâmico via Laravel (White Label)
+    RewriteRule ^manifest\.json$ public/index.php [L]
+    RewriteRule ^painel-sw\.js$ public/painel-sw.js [L]
+    RewriteRule ^icons/(.*)$ public/icons/$1 [L]
+
+    # Arquivos/diretórios existentes – não reescrever (exceto dotfiles já bloqueados acima)
+    RewriteCond %{REQUEST_URI} !^/\.env [NC]
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Demais requisições – encaminhar para o Laravel
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/index.php [L,QSA]
+</IfModule>

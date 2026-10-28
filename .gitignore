@@ -1,28 +1,33 @@
-# dependências e build
-node_modules
-.next
-out
-build
-dist
-*.tsbuildinfo
-next-env.d.ts
-
-# variáveis de ambiente (nunca versionar; só o .env.example vai pro Git)
-.env
-.env.*
-!.env.example
-
-# Vercel e Supabase (arquivos locais das CLIs)
-.vercel
-supabase/.temp
-
-# banco local e chaves
-prisma/*.db
-prisma/*.db-journal
-*.db
-*.db-journal
-*.pem
-
-# sistema e editor
+*.log
 .DS_Store
-.claude/settings.local.json
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.fleet
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
+# Plugins instalados pelo painel / ZIP (persistente; não versionar)
+/plugins
+/plugins-installed
+/storage/app/plugins-installed
+.docker/plugins-installed
+/public/hot
+/public/storage
+/public/.install
+/storage/app/install.lock
+/storage/*.key
+/storage/pail
+Homestead.json
+Homestead.yaml
+Thumbs.db
+/docs
+/Docs Gateways
+docs
+Docs Gateways
