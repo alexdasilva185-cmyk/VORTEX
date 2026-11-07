@@ -1,0 +1,13 @@
+CONTROLE DE VENDAS — GITHUB + VERCEL
+
+1. Crie um repositório PRIVADO no GitHub (ex.: controle-de-vendas).
+2. Extraia o ZIP. Envie TODOS os arquivos que estão dentro da pasta controle-vendas-app diretamente para a RAIZ do repositório (index.html, manifest.webmanifest, sw.js, ícones, vercel.json e este arquivo). Não envie só o ZIP.
+3. Em vercel.com, escolha Add New > Project, conecte o GitHub e importe o repositório.
+4. Se necessário, em Framework Preset selecione Other. Root Directory: ./ (raiz). Build Command: sem comando. Output Directory: padrão (raiz). Clique Deploy.
+5. Abra o endereço HTTPS fornecido pela Vercel no celular.
+6. Android/Chrome: menu > Instalar aplicativo ou Adicionar à tela inicial. iPhone/Safari: Compartilhar > Adicionar à Tela de Início.
+
+ATENÇÃO: A VERCEL HOSPEDA OS ARQUIVOS, MAS NÃO SINCRONIZA AS VENDAS.
+Os registros são salvos no armazenamento local do navegador do aparelho. Não há login ou banco de dados. Faça backups JSON regularmente; se trocar aparelho, reinstalar ou limpar dados, importe o backup para recuperar os registros.
+
+LANCAMENTOS: Informe data, quantidade, faturamento e custos. Lucro calculado = faturamento menos custos. Registre todos os custos relevantes para estimar corretamente o lucro.
