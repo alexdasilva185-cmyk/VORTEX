@@ -1,0 +1,31 @@
+CONTROLE DE VENDAS — PUBLICAÇÃO SEM PRISMA
+
+ESTE PACOTE É UM APLICATIVO ESTÁTICO: NÃO TEM PRISMA, NPM, NEXT.JS OU BANCO DE DADOS.
+
+ATENÇÃO: ENVIAR ESSES ARQUIVOS POR CIMA DO REPOSITÓRIO ANTIGO NÃO É SUFICIENTE!
+Se o repositório atual ainda tiver package.json, prisma/schema.prisma ou outro projeto,
+a Vercel poderá continuar executando npm run build e apresentar o erro DIRECT_URL.
+
+RECOMENDADO — INSTALAÇÃO LIMPA:
+1. Crie um NOVO repositório no GitHub, ex.: controle-vendas-simples.
+2. EXTRAIA este ZIP no computador.
+3. Faça upload APENAS dos arquivos extraídos (não do ZIP inteiro) na RAIZ do novo repositório.
+4. Na Vercel, clique Add New > Project e importe o NOVO repositório.
+5. Framework Preset: Other; Root Directory: ./
+6. Build Command: ative Override e DEIXE VAZIO.
+7. Output Directory: . (raiz) ou deixe o valor definido no vercel.json.
+8. Deploy.
+
+PARA MANTER O REPOSITÓRIO ANTIGO:
+- Antes de subir estes arquivos, remova todos os arquivos antigos que não pertencem a este pacote,
+  em especial package.json, package-lock.json, pnpm-lock.yaml, prisma/, src/, app/, pages/,
+  next.config.*, vite.config.* (somente se forem do projeto antigo).
+- Confira em Vercel > Settings > Git que o projeto aponta para o repositório certo.
+- Confira em Vercel > Settings > Build and Deployment se Root Directory está certo.
+- Faça um NOVO deploy do commit atualizado, não apenas redeploy de um commit antigo.
+
+Se seu sistema atual tem login e vendas salvas no banco, NÃO substitua pelo pacote estático:
+essa versão usa localStorage e não sincroniza celulares. Nesse caso precisa corrigir o Prisma
+no código real do sistema ou configurar DIRECT_URL da conexão direta do banco em
+Vercel > Settings > Environment Variables (incluindo Production e Preview, se necessário).
+Nunca envie credenciais do banco para o GitHub.
